@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>实时排架系统 · 图书检索 Demo</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --ink: #1e293b;
+      --muted: #64748b;
+      --rule: #e2e8f0;
+      --accent: #1d4ed8;
+      --accent-dark: #1e3a8a;
+      --accent-bg: #eff6ff;
+      --shelf: #059669;
+      --shelf-bg: #d1fae5;
+      --shelf-dark: #065f46;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); color: var(--ink); background: var(--bg); line-height: 1.6; }
+
+    header.top {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      color: #fff; padding: 30px 20px 22px; box-shadow: var(--shadow-md);
+    }
+    header.top .inner { max-width: 980px; margin: 0 auto; }
+    header.top h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: 1px; }
+    header.top p { margin-top: 6px; opacity: 0.9; font-size: 0.95rem; }
+    .stat-line { margin-top: 14px; display: flex; gap: 22px; flex-wrap: wrap; font-size: 0.9rem; }
+    .stat-line b { font-size: 1.15rem; }
+
+    /* 标签页 */
+    .tabs { max-width: 980px; margin: 18px auto 0; padding: 0 20px; display: flex; gap: 8px; }
+    .tab { padding: 10px 22px; border-radius: 10px 10px 0 0; background: transparent; color: var(--muted);
+           cursor: pointer; font-size: 1rem; font-weight: 600; border: none; }
+    .tab.active { background: var(--card); color: var(--accent); box-shadow: var(--shadow); }
+
+    main { max-width: 980px; margin: 0 auto 60px; padding: 0 20px; }
+    .panel { display: none; background: var(--card); border-radius: 0 12px 12px 12px; box-shadow: var(--shadow); padding: 22px; }
+    .panel.active { display: block; }
+
+    /* 检索区 */
+    .search-box { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+    .search-box select, .search-box input, .search-box button {
+      height: 46px; border: 1px solid var(--rule); border-radius: 8px; font-size: 1rem; font-family: var(--font);
+    }
+    .search-box select { padding: 0 12px; background: #f8fafc; cursor: pointer; min-width: 110px; }
+    .search-box input { flex: 1; min-width: 200px; padding: 0 14px; }
+    .search-box input:focus, .search-box select:focus { outline: none; border-color: var(--accent); }
+    .search-box button { padding: 0 28px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+    .search-box button:hover { background: var(--accent-dark); }
+
+    .quick { font-size: 0.86rem; color: var(--muted); margin-bottom: 16px; }
+    .quick a { color: var(--accent); cursor: pointer; text-decoration: none; margin: 0 10px 6px 0; display: inline-block; }
+    .quick a:hover { text-decoration: underline; }
+
+    .result-info { color: var(--muted); font-size: 0.9rem; margin-bottom: 14px; }
+    .result-info b { color: var(--accent); font-size: 1.05rem; }
+
+    .book-card { background: #fff; border: 1px solid var(--rule); border-radius: var(--radius); padding: 16px 18px;
+                 margin-bottom: 12px; display: flex; gap: 16px; align-items: flex-start; transition: box-shadow 0.2s, border-color 0.2s; }
+    .book-card:hover { box-shadow: var(--shadow-md); border-color: #dbeafe; }
+    .book-main { flex: 1; min-width: 0; }
+    .book-title { font-size: 1.14rem; font-weight: 700; margin-bottom: 6px; }
+    .book-title .idx { color: var(--muted); font-weight: 400; font-size: 0.95rem; margin-right: 8px; }
+    .book-meta { font-size: 0.92rem; margin: 3px 0; }
+    .book-meta .label { color: var(--muted); display: inline-block; min-width: 62px; }
+    .callno { font-family: "Consolas", "Courier New", monospace; background: var(--accent-bg); color: var(--accent-dark); padding: 1px 8px; border-radius: 5px; font-weight: 600; }
+
+    .shelf-box { flex-shrink: 0; width: 180px; background: var(--shelf-bg); border: 1px solid #a7f3d0; border-radius: 10px; padding: 13px; text-align: center; }
+    .shelf-box .shelf-label { display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--shelf-dark); font-size: 0.78rem; font-weight: 600; margin-bottom: 6px; }
+    .shelf-box .shelf-label svg { width: 14px; height: 14px; }
+    .shelf-box .shelf-value { color: var(--shelf-dark); font-size: 1.2rem; font-weight: 800; letter-spacing: 1px; }
+    .shelf-box .shelf-empty { color: var(--muted); font-size: 0.95rem; }
+    .shelf-box .shelf-hint { color: var(--shelf); font-size: 0.72rem; margin-top: 6px; }
+
+    .empty { text-align: center; color: var(--muted); padding: 50px 20px; font-size: 1.05rem; }
+
+    /* 识别演示区 */
+    .intro { color: var(--muted); font-size: 0.92rem; margin-bottom: 18px; line-height: 1.7; }
+    .shelf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .shelf-item { border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; background: #fff; }
+    .shelf-item img { width: 100%; height: 150px; object-fit: cover; display: block; background: #e2e8f0; cursor: pointer; }
+    .shelf-item .body { padding: 12px 14px; }
+    .shelf-item .sid { font-weight: 800; color: var(--shelf-dark); font-size: 1.05rem; }
+    .shelf-item .cnt { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+    .shelf-item .btn { margin-top: 8px; display: inline-block; font-size: 0.82rem; color: var(--accent); cursor: pointer; }
+    .shelf-item .btn:hover { text-decoration: underline; }
+
+    /* 图片放大遮罩 */
+    .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; align-items: center; justify-content: center; padding: 20px; }
+    .lightbox.show { display: flex; }
+    .lightbox img { max-width: 96%; max-height: 96%; border-radius: 8px; }
+
+    footer { max-width: 980px; margin: 0 auto 40px; padding: 0 20px; color: var(--muted); font-size: 0.82rem; text-align: center; }
+
+    @media (max-width: 640px) { .book-card { flex-direction: column; } .shelf-box { width: 100%; } }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="inner">
+      <h1>实时排架系统</h1>
+      <p>用 OCR 识别书架照片上的索书号与书架号，自动建库，读者检索即可定位图书所在书架</p>
+      <div class="stat-line">
+        <span>馆藏图书 <b id="statBooks">-</b> 册</span>
+        <span>覆盖书架 <b id="statShelves">-</b> 个</span>
+        <span>识别照片 <b id="statPhotos">-</b> 张</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="search">图书检索</button>
+    <button class="tab" data-tab="ocr">排架识别演示</button>
+  </div>
+
+  <main>
+    <!-- 检索面板 -->
+    <section class="panel active" id="panel-search">
+      <div class="search-box">
+        <select id="field">
+          <option value="all">全部</option>
+          <option value="书名">书名</option>
+          <option value="著者">著者</option>
+          <option value="索书号">索书号</option>
+          <option value="主题">主题</option>
+          <option value="出版社">出版社</option>
+          <option value="ISBN">ISBN</option>
+          <option value="书架号">书架号</option>
+        </select>
+        <input id="keyword" type="text" placeholder="请输入书名、著者、索书号或书架号进行检索" autocomplete="off">
+        <button id="searchBtn">检 索</button>
+      </div>
+      <div class="quick" id="quick"></div>
+      <div class="result-info" id="resultInfo"></div>
+      <div id="results"></div>
+    </section>
+
+    <!-- 识别演示面板 -->
+    <section class="panel" id="panel-ocr">
+      <div class="intro">
+        以下为系统对真实书架照片的识别成果：每张照片自动提取<b>书架号</b>（几排几架几层）与该层<b>全部图书的索书号</b>，
+        再通过索书号查询书目信息入库。点击照片可放大查看，点击“查看该架图书”可跳转检索。
+      </div>
+      <div class="shelf-grid" id="shelfGrid"></div>
+    </section>
+  </main>
+
+  <div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+
+  <footer>实时排架系统 Demo · 数据由 OCR 自动识别生成 · 静态站点</footer>
+
+  <script src="books.js"></script>
+  <script>
+    const BOOKS = window.BOOKS || [];
+    const SEARCH_FIELDS = {
+      all: ["书名", "著者", "索书号", "ISBN", "出版社", "主题", "书架号"],
+      书名: ["书名"], 著者: ["著者"], 索书号: ["索书号"], ISBN: ["ISBN"],
+      出版社: ["出版社"], 主题: ["主题"], 书架号: ["书架号"]
+    };
+    const PIN_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1112 6.5a2.5 2.5 0 010 5z"/></svg>';
+
+    const el = id => document.getElementById(id);
+    const escapeHtml = s => (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    // 统计信息
+    const shelfSet = new Set(BOOKS.map(b => b['书架号']).filter(Boolean));
+    const photoSet = new Set(BOOKS.map(b => b['图片']).filter(Boolean));
+    el('statBooks').textContent = BOOKS.length;
+    el('statShelves').textContent = shelfSet.size;
+    el('statPhotos').textContent = photoSet.size;
+
+    // 书架快捷入口
+    el('quick').innerHTML = '<span>常用书架：</span>' +
+      [...shelfSet].sort().map(s => '<a onclick="searchByShelf(\'' + escapeHtml(s) + '\')">' + escapeHtml(s) + '</a>').join('');
+
+    function renderBooks(list) {
+      el('resultInfo').innerHTML = '共找到 <b>' + list.length + '</b> 种图书';
+      if (!list.length) { el('results').innerHTML = '<div class="empty">没有找到符合条件的图书，请更换关键词重试</div>'; return; }
+      el('results').innerHTML = list.map((b, i) => {
+        const shelf = b['书架号'];
+        const shelfBox = shelf
+          ? '<div class="shelf-value">' + escapeHtml(shelf) + '</div><div class="shelf-hint">请到该书架取书</div>'
+          : '<div class="shelf-empty">位置未知</div>';
+        const meta = [];
+        if (b['著者']) meta.push('<div class="book-meta"><span class="label">著者</span>' + escapeHtml(b['著者']) + '</div>');
+        if (b['索书号']) meta.push('<div class="book-meta"><span class="label">索书号</span><span class="callno">' + escapeHtml(b['索书号']) + '</span></div>');
+        if (b['出版社'] || b['出版日期']) meta.push('<div class="book-meta"><span class="label">出版</span>' + escapeHtml([b['出版社'], b['出版日期']].filter(Boolean).join(' · ')) + '</div>');
+        if (b['ISBN']) meta.push('<div class="book-meta"><span class="label">ISBN</span>' + escapeHtml(b['ISBN']) + '</div>');
+        if (b['主题']) meta.push('<div class="book-meta"><span class="label">主题</span>' + escapeHtml(b['主题']) + '</div>');
+        return '<div class="book-card"><div class="book-main">' +
+          '<div class="book-title"><span class="idx">' + (i + 1) + '</span>' + escapeHtml(b['书名'] || '未知书名') + '</div>' +
+          meta.join('') + '</div>' +
+          '<div class="shelf-box"><div class="shelf-label">' + PIN_SVG + '馆藏位置 · 书架号</div>' + shelfBox + '</div></div>';
+      }).join('');
+    }
+
+    function doSearch() {
+      const q = el('keyword').value.trim().toLowerCase();
+      const fields = SEARCH_FIELDS[el('field').value] || SEARCH_FIELDS.all;
+      const list = !q ? BOOKS : BOOKS.filter(b => fields.some(f => (b[f] || '').toLowerCase().includes(q)));
+      renderBooks(list);
+    }
+
+    window.searchByShelf = function (shelf) {
+      switchTab('search');
+      el('field').value = '书架号';
+      el('keyword').value = shelf;
+      doSearch();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    el('searchBtn').addEventListener('click', doSearch);
+    el('keyword').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+    // 识别演示：按图片分组
+    function renderShelfGrid() {
+      const groups = new Map();
+      BOOKS.forEach(b => {
+        const key = b['图片'];
+        if (!key) return;
+        if (!groups.has(key)) groups.set(key, { shelf: b['书架号'], count: 0 });
+        groups.get(key).count++;
+      });
+      const items = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+      el('shelfGrid').innerHTML = items.map(([img, g]) =>
+        '<div class="shelf-item">' +
+          '<img src="img/' + escapeHtml(img) + '" alt="书架照片" onclick="showImg(\'img/' + escapeHtml(img) + '\')">' +
+          '<div class="body">' +
+            '<div class="sid">' + escapeHtml(g.shelf || '未知书架') + '</div>' +
+            '<div class="cnt">识别图书 ' + g.count + ' 册 · 来源 ' + escapeHtml(img) + '</div>' +
+            '<span class="btn" onclick="searchByShelf(\'' + escapeHtml(g.shelf || '') + '\')">查看该架图书 →</span>' +
+          '</div>' +
+        '</div>').join('');
+    }
+
+    // 图片放大
+    window.showImg = function (src) { el('lightboxImg').src = src; el('lightbox').classList.add('show'); };
+    el('lightbox').addEventListener('click', () => el('lightbox').classList.remove('show'));
+
+    // 标签切换
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    }
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+    // 初始化
+    renderShelfGrid();
+    doSearch();
+  </script>
+</body>
+</html>
