@@ -93,6 +93,53 @@
     .shelf-item .btn { margin-top: 8px; display: inline-block; font-size: 0.82rem; color: var(--accent); cursor: pointer; }
     .shelf-item .btn:hover { text-decoration: underline; }
 
+    /* 馆藏对比区 */
+    .cmp-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .cmp-stat { flex: 1; min-width: 120px; background: #f8fafc; border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; }
+    .cmp-stat .num { font-size: 1.5rem; font-weight: 800; }
+    .cmp-stat .cap { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+    .cmp-stat.total .num { color: var(--accent); }
+    .cmp-stat.ok .num { color: var(--shelf); }
+    .cmp-stat.bad .num { color: #dc2626; }
+
+    .cmp-toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+    .cmp-toolbar input[type=text], .cmp-toolbar select {
+      height: 42px; border: 1px solid var(--rule); border-radius: 8px; font-size: 0.95rem; font-family: var(--font); padding: 0 12px; background: #fff;
+    }
+    .cmp-toolbar input[type=text] { flex: 1; min-width: 200px; }
+    .cmp-toolbar select { background: #f8fafc; cursor: pointer; min-width: 130px; }
+    .cmp-toolbar input:focus, .cmp-toolbar select:focus { outline: none; border-color: var(--accent); }
+    .cmp-check { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.9rem; cursor: pointer; user-select: none; }
+    .cmp-check input { width: 16px; height: 16px; cursor: pointer; }
+
+    .cmp-table-wrap { overflow-x: auto; }
+    .cmp-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .cmp-table th { text-align: left; color: var(--muted); font-weight: 600; font-size: 0.82rem; padding: 8px 10px; border-bottom: 2px solid var(--rule); white-space: nowrap; }
+    .cmp-table td { padding: 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+    .cmp-table tr.main-row:hover { background: #f8fafc; }
+    .cmp-table tr.main-row.bad { background: #fef2f2; }
+    .cmp-table tr.main-row.bad:hover { background: #fee2e2; }
+    .cmp-table .bk-title { font-weight: 700; margin-bottom: 3px; }
+    .cmp-table .bk-callno { font-family: "Consolas", "Courier New", monospace; background: var(--accent-bg); color: var(--accent-dark); padding: 1px 7px; border-radius: 5px; font-size: 0.82rem; }
+    .cmp-table .bk-author { color: var(--muted); font-size: 0.82rem; margin-top: 3px; }
+    .cmp-table .shelf-cell { font-weight: 700; color: var(--shelf-dark); }
+    .cmp-table .on-shelf { display: inline-block; margin-top: 4px; font-size: 0.72rem; color: var(--shelf); background: var(--shelf-bg); padding: 1px 7px; border-radius: 4px; }
+    .cmp-table .hold-sum b { font-size: 1.05rem; }
+    .cmp-table .hold-sub { color: var(--muted); font-size: 0.8rem; }
+    .cmp-table .detail-btn { display: inline-block; margin-top: 4px; font-size: 0.8rem; color: var(--accent); cursor: pointer; }
+    .cmp-table .detail-btn:hover { text-decoration: underline; }
+
+    .cmp-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; line-height: 1.5; }
+    .cmp-badge.ok { background: var(--shelf-bg); color: var(--shelf-dark); }
+    .cmp-badge.bad { background: #fee2e2; color: #b91c1c; }
+
+    .cmp-thumb { width: 46px; height: 46px; object-fit: cover; border-radius: 6px; cursor: pointer; background: #e2e8f0; }
+
+    .cmp-table tr.detail-row td { background: #f8fafc; padding: 10px 14px; }
+    .cmp-copy { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 6px 0; border-bottom: 1px dashed var(--rule); }
+    .cmp-copy:last-child { border-bottom: none; }
+    .cmp-copy .k { color: var(--muted); margin-right: 4px; }
+
     /* 图片放大遮罩 */
     .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; align-items: center; justify-content: center; padding: 20px; }
     .lightbox.show { display: flex; }
@@ -119,6 +166,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="search">图书检索</button>
     <button class="tab" data-tab="ocr">排架识别演示</button>
+    <button class="tab" data-tab="compare">馆藏对比</button>
   </div>
 
   <main>
@@ -151,6 +199,36 @@
       </div>
       <div class="shelf-grid" id="shelfGrid"></div>
     </section>
+
+    <!-- 馆藏对比面板 -->
+    <section class="panel" id="panel-compare">
+      <div class="intro">
+        将排架识别出的<b>在架图书</b>与<b>宁波图书馆实时馆藏状态</b>逐本对比，用于发现“书在架上但系统显示已借出/不在馆”等异常。
+        （已过滤掉“本馆无馆藏记录”和“接口未匹配到书目”两类记录）
+      </div>
+      <div class="cmp-stats" id="cmpStats"></div>
+      <div class="cmp-toolbar">
+        <input id="cmpKeyword" type="text" placeholder="按书名 / 索书号 / 著者筛选" autocomplete="off">
+        <select id="cmpShelf"><option value="">全部书架</option></select>
+        <label class="cmp-check"><input type="checkbox" id="cmpOnlyBad"> 只看异常</label>
+      </div>
+      <div class="cmp-table-wrap">
+        <table class="cmp-table">
+          <thead>
+            <tr>
+              <th style="width:38px">#</th>
+              <th>书名 / 索书号</th>
+              <th style="width:130px">书架号（在架）</th>
+              <th style="width:150px">馆藏状态</th>
+              <th style="width:220px">对比结论</th>
+              <th style="width:64px">照片</th>
+            </tr>
+          </thead>
+          <tbody id="cmpTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="cmpEmpty" style="display:none">没有符合条件的记录</div>
+    </section>
   </main>
 
   <div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt=""></div>
@@ -158,6 +236,7 @@
   <footer>实时排架系统 Demo · 数据由 OCR 自动识别生成 · 静态站点</footer>
 
   <script src="books.js"></script>
+  <script src="compare_data.js"></script>
   <script>
     const BOOKS = window.BOOKS || [];
     const SEARCH_FIELDS = {
@@ -252,9 +331,100 @@
     }
     document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
+    // ===== 馆藏对比 =====
+    const COMPARE = window.COMPARE || [];
+
+    function cmpBadge(r) {
+      const cls = r.verdict === 'match' ? 'ok' : 'bad';
+      return '<span class="cmp-badge ' + cls + '">' + escapeHtml(r.verdict_text) + '</span>';
+    }
+
+    function cmpHoldCell(r, idx) {
+      if (!r.total) return '无馆藏记录';
+      return '<div class="hold-sum">在馆 <b>' + r.in_count + '</b> · 其他 ' + r.out_count +
+        ' <span class="hold-sub">(共' + r.total + '册)</span></div>' +
+        (r.copies && r.copies.length ? '<span class="detail-btn" data-detail="' + idx + '">明细 ▾</span>' : '');
+    }
+
+    function cmpCopiesHtml(copies) {
+      return (copies || []).map(c =>
+        '<div class="cmp-copy">' +
+          '<span><span class="k">条码</span>' + escapeHtml(c.barcode) + '</span>' +
+          '<span><span class="k">索书号</span>' + escapeHtml(c.callno) + '</span>' +
+          '<span><span class="k">状态</span>' + escapeHtml(c.state) + '</span>' +
+          '<span><span class="k">馆藏地</span>' + escapeHtml(c.local) + '</span>' +
+        '</div>').join('');
+    }
+
+    function renderCompareStats() {
+      const total = COMPARE.length;
+      const ok = COMPARE.filter(r => r.verdict === 'match').length;
+      const bad = total - ok;
+      el('cmpStats').innerHTML =
+        '<div class="cmp-stat total"><div class="num">' + total + '</div><div class="cap">在架并有馆藏</div></div>' +
+        '<div class="cmp-stat ok"><div class="num">' + ok + '</div><div class="cap">一致（系统在馆）</div></div>' +
+        '<div class="cmp-stat bad"><div class="num">' + bad + '</div><div class="cap">异常（系统显示借出/不在馆）</div></div>';
+    }
+
+    function renderCompare() {
+      const q = el('cmpKeyword').value.trim().toLowerCase();
+      const shelf = el('cmpShelf').value;
+      const onlyBad = el('cmpOnlyBad').checked;
+      const list = COMPARE.filter(r => {
+        if (onlyBad && r.verdict !== 'mismatch') return false;
+        if (shelf && r['书架号'] !== shelf) return false;
+        if (q) {
+          const hay = [r['书名'], r['索书号'], r['著者']].join(' ').toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      el('cmpEmpty').style.display = list.length ? 'none' : 'block';
+      el('cmpTbody').innerHTML = list.map((r, i) => {
+        const bad = r.verdict === 'mismatch';
+        const img = r['图片'] ? '<img class="cmp-thumb" src="img/' + escapeHtml(r['图片']) + '" alt="书架照片" onclick="showImg(\'img/' + escapeHtml(r['图片']) + '\')">' : '';
+        const detailRow = (r.copies && r.copies.length)
+          ? '<tr class="detail-row" data-detail-row="' + i + '" style="display:none"><td colspan="6">' + cmpCopiesHtml(r.copies) + '</td></tr>'
+          : '';
+        return '<tr class="main-row' + (bad ? ' bad' : '') + '">' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td><div class="bk-title">' + escapeHtml(r['书名'] || '未知书名') + '</div>' +
+              '<span class="bk-callno">' + escapeHtml(r['索书号']) + '</span>' +
+              (r['著者'] ? '<div class="bk-author">' + escapeHtml(r['著者']) + '</div>' : '') + '</td>' +
+            '<td><div class="shelf-cell">' + escapeHtml(r['书架号'] || '未知') + '</div><span class="on-shelf">已识别在架</span></td>' +
+            '<td>' + cmpHoldCell(r, i) + '</td>' +
+            '<td>' + cmpBadge(r) + '</td>' +
+            '<td>' + img + '</td>' +
+          '</tr>' + detailRow;
+      }).join('');
+    }
+
+    function initCompare() {
+      renderCompareStats();
+      const shelves = [...new Set(COMPARE.map(r => r['书架号']).filter(Boolean))].sort();
+      el('cmpShelf').innerHTML = '<option value="">全部书架</option>' +
+        shelves.map(s => '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>').join('');
+      el('cmpKeyword').addEventListener('input', renderCompare);
+      el('cmpShelf').addEventListener('change', renderCompare);
+      el('cmpOnlyBad').addEventListener('change', renderCompare);
+      // 明细展开/收起(事件委托)
+      el('cmpTbody').addEventListener('click', e => {
+        const btn = e.target.closest('.detail-btn');
+        if (!btn) return;
+        const dr = el('cmpTbody').querySelector('tr.detail-row[data-detail-row="' + btn.dataset.detail + '"]');
+        if (!dr) return;
+        const show = dr.style.display === 'none';
+        dr.style.display = show ? '' : 'none';
+        btn.textContent = show ? '收起 ▴' : '明细 ▾';
+      });
+      renderCompare();
+    }
+
     // 初始化
     renderShelfGrid();
     doSearch();
+    initCompare();
   </script>
 </body>
 </html>
